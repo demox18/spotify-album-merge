@@ -2,6 +2,8 @@
 
 App personale, a schermo intero anche su iPhone, che sistema **una** libreria Spotify usando solo la [Web API ufficiale](https://developer.spotify.com/documentation/web-api). Non c’è un server, non c’è un database e il Client Secret non serve: è un sito statico. Niente viene scritto su Spotify finché non premi un bottone di conferma, dopo aver visto l’anteprima.
 
+Sul Mac è un’app, con icona in /Applications. Sull’iPhone si aggiunge a Home da [https://demox18.github.io/spotify-album-merge/](https://demox18.github.io/spotify-album-merge/).
+
 Uso personale e non commerciale, da parte di chi possiede l’app nel Developer Dashboard.
 
 ## Cosa fa
@@ -56,22 +58,25 @@ Verificato sulla [guida di migrazione di febbraio 2026](https://developer.spotif
 ## Creare l’app nel dashboard
 
 1. Apri [Spotify for Developers](https://developer.spotify.com/dashboard) ed entra con l’account Premium che possiederà l’app.
-2. Crea un’app. Nome, per esempio: **Scaffale**. Descrizione: uso personale della tua libreria. Sito: l’URL HTTPS dove la pubblicherai, oppure `http://127.0.0.1:5173/` se per ora la provi solo in locale.
+2. Crea un’app. Nome, per esempio: **Scaffale**. Descrizione: uso personale della tua libreria. Sito: `https://demox18.github.io/spotify-album-merge/` (oppure `http://127.0.0.1:5173/` se per ora la provi solo sul Mac).
 3. Spunta **Web API**. Non ti serve altro.
-4. In Settings, Redirect URIs, aggiungi **entrambi**, se ti servono, copiandoli così come sono, barra finale compresa:
-   - prova sul Mac: `http://127.0.0.1:5173/`
-   - sito pubblicato: l’URL esatto dell’app, per esempio `https://tuosito.altervista.org/scaffale/`
+4. In Settings, Redirect URIs, aggiungi **entrambi**, copiandoli così come sono, barra finale compresa:
+   - app sul Mac: `http://127.0.0.1:5173/`
+   - iPhone, GitHub Pages: `https://demox18.github.io/spotify-album-merge/`
+   - se pubblichi anche altrove, aggiungi pure quell’URL esatto, per esempio `https://tuosito.altervista.org/scaffale/`
 5. Spotify accetta HTTPS, oppure il loopback `http://127.0.0.1:PORT` (anche `[::1]`). **`localhost` non è valido.** L’URI della richiesta deve coincidere con quello registrato, maiuscole e barra finale comprese. In locale la porta è fissa: 5173.
 6. Copia il **Client ID** (32 caratteri esadecimali). Il Client Secret non va nell’app e non va incollato da nessuna parte.
 7. Users Management: il tuo utente c’è già. Altri utenti, al massimo cinque in tutto, vanno invitati con la mail Spotify prima che possano usare l’app.
 
 Poi apri Scaffale, incolla il Client ID, controlla l’URI di reindirizzamento e premi **Connetti Spotify**. I token restano in `localStorage` di quel browser. **Disconnetti** li cancella, insieme al diario di ripresa. Il Client ID resta, finché non lo cambi.
 
-Su iPhone: Safari → Condividi → Aggiungi a Home. La PWA e Safari **non** condividono lo spazio locale: fai l’accesso nel posto in cui userai l’app. Se il login esce dall’icona e apre Safari, i token sono in Safari.
+Su iPhone apri [https://demox18.github.io/spotify-album-merge/](https://demox18.github.io/spotify-album-merge/) in Safari, poi Condividi → Aggiungi a Home. Entra in Spotify **dall’icona Scaffale**, non dalla scheda di Safari: l’icona ha un `localStorage` tutto suo. Se il login esce dall’icona e finisce in Safari, i token restano in Safari e l’icona ti chiede di nuovo l’accesso.
 
 Il refresh token del dashboard dura 6 mesi e non si allunga quando rinnovi l’access token (circa un’ora). Quando scade, Scaffale ti chiede di connetterti di nuovo.
 
 ## Sul Mac
+
+### Nel browser, per sviluppare
 
 Serve Node 20 o più recente.
 
@@ -81,9 +86,32 @@ npm test
 npm run dev
 ```
 
-Apri [http://127.0.0.1:5173/](http://127.0.0.1:5173/). Non usare `localhost`.
+Apri [http://127.0.0.1:5173/](http://127.0.0.1:5173/). Non usare `localhost`. `npm run dev` occupa la porta 5173: chiudilo prima di aprire l’app, che usa la stessa porta e lo stesso URI.
 
 `npm test` esegue Vitest sul modulo di diff, sulla paginazione e sul piano di scrittura, senza rete.
+
+### App in /Applications
+
+`macos/build-app.sh` esegue `npm ci` e `npm run build` con base `/`, compila il wrapper Swift (WKWebView, senza progetto Xcode e senza team), disegna l’icona e firma in ad hoc con `codesign -s -`. Servono gli strumenti da riga di comando di Xcode: `swiftc`, `sips`, `iconutil`, `codesign`.
+
+```bash
+bash macos/build-app.sh
+bash macos/build-app.sh --install
+```
+
+Senza `--install` l’app resta in `macos/Scaffale.app`. Con `--install` viene copiata in `/Applications`. Se la cartella non è scrivibile, lo script riprova con `sudo` solo per la copia.
+
+L’app incorpora `dist/` e lo serve da sola su `http://127.0.0.1:5173/`, in ascolto soltanto su `127.0.0.1`. Se la porta è occupata, un avviso in italiano chiede di chiudere l’altro programma: l’URI registrato su Spotify è esattamente quello e non si può cambiare porta. Il Client ID e i token restano nel `localStorage` della WebView anche dopo aver chiuso l’app. Il login (`accounts.spotify.com`) resta nella finestra; gli altri link, per esempio una playlist, si aprono nel browser.
+
+Se macOS blocca lo sviluppatore non identificato: tasto destro sull’app → Apri.
+
+Da controllare sul Mac:
+
+- icona in /Applications e finestra che mostra Scaffale
+- con `npm run dev` acceso, l’avviso sulla porta 5173; spento quello, l’app si apre
+- Client ID incollato (Modifica → Incolla), Connetti, ritorno su `http://127.0.0.1:5173/?code=…&state=…` e ingresso nell’account
+- esci e riapri: Client ID e sessione ci sono ancora
+- «Apri la playlist su Spotify» si apre nel browser, non nella finestra di Scaffale
 
 ## Pubblicare la cartella statica
 
@@ -91,13 +119,27 @@ Apri [http://127.0.0.1:5173/](http://127.0.0.1:5173/). Non usare `localhost`.
 npm run build
 ```
 
-Produce `dist/` e, nella root del repository, `dist.zip` con il contenuto di `dist/` (non una cartella annidata). Sono già file statici: HTML, JS, CSS, manifest, service worker, icone. `base` è relativo, quindi funzionano anche in una sottocartella.
+Produce `dist/` e, nella root del repository, `dist.zip` con il contenuto di `dist/` (non una cartella annidata). Sono già file statici: HTML, JS, CSS, manifest, service worker, icone.
+
+La base di Vite è la variabile `SCAFFALE_BASE`. Se manca, è `/`: va bene per l’app Mac e per `npm run dev`, entrambi all’origine di `http://127.0.0.1:5173/`. Per una sottocartella va impostata prima della build, con la barra finale. `SCAFFALE_BASE=./` lascia percorsi relativi.
+
+```bash
+SCAFFALE_BASE=/scaffale/ npm run build
+```
+
+### iPhone, GitHub Pages
+
+L’indirizzo è [https://demox18.github.io/spotify-album-merge/](https://demox18.github.io/spotify-album-merge/). `.github/workflows/pages.yml` costruisce con `SCAFFALE_BASE=/spotify-album-merge/` e pubblica `dist/` a ogni push su `main` (`actions/upload-pages-artifact` e `actions/deploy-pages`). Nel repository, Settings → Pages → Build and deployment, la sorgente deve essere **GitHub Actions**. Il primo deploy parte quando questo file è su `main`.
+
+L’URI da registrare, barra finale compresa, è `https://demox18.github.io/spotify-album-merge/`. Scaffale lo calcola dall’indirizzo della pagina (origine e percorso): non è fisso nel codice.
+
+Poi, su iPhone: Safari → Condividi → Aggiungi a Home, e fai l’accesso dall’icona. Vedi sopra: icona e Safari non condividono i token.
 
 ### Altervista, via FTP
 
 1. Entra in FTP nel sito HTTPS (Altervista fornisce il certificato sul dominio `*.altervista.org`).
 2. Crea una cartella, per esempio `scaffale`.
-3. Carica **il contenuto** di `dist/` (o estrai lì `dist.zip`), così che `index.html` stia in quella cartella.
+3. Costruisci con `SCAFFALE_BASE=/scaffale/` (la base di default `/` non va bene in una sottocartella) e carica **il contenuto** di `dist/` (o estrai lì `dist.zip`), così che `index.html` stia in quella cartella.
 4. L’URI da registrare nel dashboard è `https://tuosito.altervista.org/scaffale/` con la barra finale. Scaffale calcola da solo l’URI della cartella in cui si trova: se il dashboard ha un altro indirizzo, incollalo nel campo prima di connetterti. Devono essere identici.
 
 ### Vercel
@@ -119,6 +161,8 @@ L’URI di reindirizzamento è `https://il-tuo-progetto.vercel.app/` (barra fina
 | `src/spotify/client.ts` | HTTP, 429, quota, rinnovo del token. |
 | `src/auth/` | PKCE e `localStorage`. |
 | `src/ui/` | Interfaccia in italiano. |
+| `macos/` | App nativa: una finestra WKWebView e il server su `127.0.0.1:5173`. |
+| `.github/workflows/pages.yml` | Pubblica la build di GitHub Pages. |
 
 Il diario in `localStorage` ricorda gli URI già confermati. Se una scrittura si interrompe, la ripresa **rilegge** la playlist e ricalcola cosa manca: non si fida dell’ultimo `snapshot_id`. Il successo è dichiarato solo se, dopo una nuova lettura, ogni URI previsto è presente.
 

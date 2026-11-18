@@ -117,6 +117,8 @@ describe('client Spotify', () => {
     expect(redirectRejectionReason('http://localhost:5173/')).toMatch(/127\.0\.0\.1/);
     expect(appBaseUrl('http://127.0.0.1:5173/index.html?code=1#x')).toBe('http://127.0.0.1:5173/');
     expect(appBaseUrl('https://esempio.altervista.org/scaffale/index.html')).toBe('https://esempio.altervista.org/scaffale/');
+    expect(appBaseUrl('https://demox18.github.io/spotify-album-merge/?code=1&state=2')).toBe('https://demox18.github.io/spotify-album-merge/');
+    expect(appBaseUrl('https://demox18.github.io/spotify-album-merge/index.html?code=1')).toBe('https://demox18.github.io/spotify-album-merge/');
   });
 
   it('segna incompleta una sequenza di pagine che non torna il totale', () => {
